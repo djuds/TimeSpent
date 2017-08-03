@@ -1,0 +1,94 @@
+@isTest
+public class TimeSpent_TEST {
+    
+    private static final String SERVICEDESKCLIENT = 'ServiceDesk Client';
+    private static final String TESTCATEGORY = 'Test Category';
+    private static final String TIMESPENT = 'Time Spent';
+    
+    private static User clientUser = null;
+    private static BMCServiceDesk__Category__c category = null;
+    
+    static{
+        generateCategoryData();
+        generateActionData();
+    }
+    
+    
+    private static testMethod void TimeSpent_CREATE_BATCH(){
+        Integer batchSize = 200;
+        Integer timeSpentValue = 10;
+        
+        //create incident objects (dont insert yet)...
+        List<BMCServiceDesk__Incident__c> incList = getIncident(batchSize);
+        
+        //add timespent value to each record
+        for(BMCServiceDesk__Incident__c i: incList){
+            i.BMCServiceDesk__timeSpent__c = timeSpentValue;
+        }
+               
+        insert incList;
+     
+        //should be 200 new 'time spent' incident history records
+        List<BMCServiceDesk__IncidentHistory__c> incHistList = new List<BMCServiceDesk__IncidentHistory__c>();
+        incHistList = [Select id,BMCServiceDesk__actionId__c from BMCServiceDesk__IncidentHistory__c 
+                       Where BMCServiceDesk__actionId__c =: TIMESPENT];
+        
+        List<BMCServiceDesk__Incident__c> incListUpdate = [select id,BMCServiceDesk__timeSpent__c from BMCServiceDesk__Incident__c where Id in :incList];
+        
+        
+        System.assertEquals(batchSize, incHistList.size());
+        
+        for(BMCServiceDesk__Incident__c i: incListUpdate){
+        	System.assertEquals(null,i.BMCServiceDesk__timeSpent__c);    
+        }
+        
+    }
+    
+    private static void generateCategoryData() {
+	
+        List<BMCServiceDesk__Category__c> catList = new List<BMCServiceDesk__Category__c>();
+        catList.add(new BMCServiceDesk__Category__c(Name = TESTCATEGORY, BMCServiceDesk__AvailableForIncidents__c=true));
+		
+		insert catList;			
+	}
+    
+    private static void generateActionData(){
+        List<BMCServiceDesk__Action__c> actionList = new List<BMCServiceDesk__Action__c>();
+        actionList.add(new BMCServiceDesk__Action__c(Name=TIMESPENT, BMCServiceDesk__appliesToIncident__c=true));
+        insert actionList;
+    }
+    
+    private static User getClientUser() {
+		
+        if(clientUser == null){
+            clientUser = [Select Id from User where Profile.Name = :SERVICEDESKCLIENT AND isActive = true limit 1];
+        }
+        
+        return clientUser;
+	}
+    
+    private static BMCServiceDesk__Category__c getCategory(String catName){
+        
+        if(category == null){
+            category = [select id from BMCServiceDesk__Category__c where Name = :catName limit 1];
+        }
+        
+        return category;
+    }
+    
+    private static List<BMCServiceDesk__Incident__c> getIncident(Integer num){
+        List<BMCServiceDesk__Incident__c> incList = new List<BMCServiceDesk__Incident__c>();
+        
+        for(Integer i = 0; i<num; i++){
+            BMCServiceDesk__Incident__c inc = new BMCServiceDesk__Incident__c();
+            
+            inc.BMCServiceDesk__FKClient__c = getClientUser().Id;
+            inc.BMCServiceDesk__FKCategory__c = getCategory(TESTCATEGORY).Id;
+            
+            incList.add(inc);
+        }
+        return incList;
+    }
+    
+
+}
