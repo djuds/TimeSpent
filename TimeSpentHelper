@@ -1,0 +1,59 @@
+public class TimeSpentHelper {
+    
+    private static final String VALUE_TIMESPENT_ACTIONNAME = 'Time Spent';
+    private static String timeSpentActionId = '';
+    private static Map<String,Time_Spent__c> surveySettingsMap; 
+    private static final String SETTING_ENABLED = 'Enabled';
+    private static boolean hasRun = false;
+    
+    //lazy load it...and query ONLY one time by caching it.
+    public static String getTimeSpentActionId(){
+        if(timeSpentActionId ==''){
+            
+            try{    
+            	timeSpentActionId = [select id from BMCServiceDesk__Action__c where Name =:VALUE_TIMESPENT_ACTIONNAME limit 1].Id;
+            } catch (Exception e){
+                System.debug('Unable to locate Action Id for Time Spent Action.');
+            }        
+        }
+        
+        return timeSpentActionId;
+    }
+    
+    public static boolean isEnabled(){
+        
+        object isEnabled = '';
+        
+        try{
+        	isEnabled = getTimeSpentSetting(SETTING_ENABLED);    
+        } catch(System.NullPointerException npe){
+            System.debug('Setting: '+ SETTING_ENABLED + ' is NULL.  Set the value to true in Custom Settings to use this feature.');
+        }
+        
+        if(isEnabled == 'true'){
+            return true;
+        } else {
+            return false;
+        }
+    }
+    
+    private static object getTimeSpentSetting(String settingName){
+        object surveySetting;
+        
+        if(surveySettingsMap == null || surveySettingsMap.size()<1){
+            surveySettingsMap = Time_Spent__c.getAll();
+        }
+        
+        surveySetting = surveySettingsMap.get(settingName).Value__c;
+        return surveySetting;
+    }
+    
+    public static boolean hasRun(){
+        return hasRun;
+    }
+    
+    public static void setHasRun(){
+        hasRun = true;
+    }
+
+}
