@@ -5,43 +5,148 @@ public class TimeSpent_TEST {
     private static final String TESTCATEGORY = 'Test Category';
     private static final String TIMESPENT = 'Time Spent';
     
+    private static final Integer batchSize = 200;
+    
     private static User clientUser = null;
     private static BMCServiceDesk__Category__c category = null;
     
     static{
         generateCategoryData();
         generateActionData();
+        generateStatuses();
     }
     
-    
-    private static testMethod void TimeSpent_CREATE_BATCH(){
-        Integer batchSize = 200;
-        Integer timeSpentValue = 10;
+    private static testMethod void TimeSpent_NoSettings(){
+        //don't add custom setting value
         
-        //create incident objects (dont insert yet)...
+        Integer timeSpentValue = 20;
+        disableTimeTracking();
+        
         List<BMCServiceDesk__Incident__c> incList = getIncident(batchSize);
         
-        //add timespent value to each record
         for(BMCServiceDesk__Incident__c i: incList){
             i.BMCServiceDesk__timeSpent__c = timeSpentValue;
         }
-               
         insert incList;
-     
-        //should be 200 new 'time spent' incident history records
-        List<BMCServiceDesk__IncidentHistory__c> incHistList = new List<BMCServiceDesk__IncidentHistory__c>();
-        incHistList = [Select id,BMCServiceDesk__actionId__c from BMCServiceDesk__IncidentHistory__c 
-                       Where BMCServiceDesk__actionId__c =: TIMESPENT];
         
-        List<BMCServiceDesk__Incident__c> incListUpdate = [select id,BMCServiceDesk__timeSpent__c from BMCServiceDesk__Incident__c where Id in :incList];
-        
-        
-        System.assertEquals(batchSize, incHistList.size());
-        
-        for(BMCServiceDesk__Incident__c i: incListUpdate){
-        	System.assertEquals(null,i.BMCServiceDesk__timeSpent__c);    
+        for(BMCServiceDesk__Incident__c i: [Select BMCServiceDesk__timeSpent__c from BMCServiceDesk__Incident__c]){
+            System.assertEquals(i.BMCServiceDesk__timeSpent__c,timeSpentValue);
         }
         
+        List<BMCServiceDesk__IncidentHistory__c> historyList = new List<BMCServiceDesk__IncidentHistory__c>();
+        historyList = [Select id from BMCServiceDesk__IncidentHistory__c];
+        Integer historySize = historyList.size();
+        
+        System.assertEquals(historySize,0);
+    }
+    
+    private static testMethod void TimeSpent_Enabled(){
+        
+        enableTimeTracking();
+        
+        List<BMCServiceDesk__Incident__c> incList = getIncident(batchSize);
+        
+        for(BMCServiceDesk__Incident__c i: incList){
+            i.BMCServiceDesk__timeSpent__c = 20;
+        }
+        insert incList;
+        
+        for(BMCServiceDesk__Incident__c i: [Select BMCServiceDesk__timeSpent__c from BMCServiceDesk__Incident__c]){
+            System.assertEquals(i.BMCServiceDesk__timeSpent__c,null);
+        }
+        
+        List<BMCServiceDesk__IncidentHistory__c> historyList = new List<BMCServiceDesk__IncidentHistory__c>();
+        historyList = [Select id from BMCServiceDesk__IncidentHistory__c];
+        Integer historySize = historyList.size();
+        
+        System.assertEquals(historySize,batchSize);
+   
+    }
+    
+    
+    private static testMethod void TimeSpent_Disabled(){
+        
+        
+        Integer timeSpentValue = 20;
+        disableTimeTracking();
+        
+        List<BMCServiceDesk__Incident__c> incList = getIncident(batchSize);
+        
+        for(BMCServiceDesk__Incident__c i: incList){
+            i.BMCServiceDesk__timeSpent__c = timeSpentValue;
+        }
+        insert incList;
+        
+        for(BMCServiceDesk__Incident__c i: [Select BMCServiceDesk__timeSpent__c from BMCServiceDesk__Incident__c]){
+            System.assertEquals(i.BMCServiceDesk__timeSpent__c,timeSpentValue);
+        }
+        
+        List<BMCServiceDesk__IncidentHistory__c> historyList = new List<BMCServiceDesk__IncidentHistory__c>();
+        historyList = [Select id from BMCServiceDesk__IncidentHistory__c];
+        Integer historySize = historyList.size();
+        
+        System.assertEquals(historySize,0);
+    }
+    
+    private static testMethod void TimeSpent_Close(){
+        
+        enableTimeTracking();
+        
+        List<BMCServiceDesk__Incident__c> incList = getIncident(batchSize);
+        String statusId = [Select Id from BMCServiceDesk__Status__c limit 1].Id;
+        
+        for(BMCServiceDesk__Incident__c i: incList){
+            i.BMCServiceDesk__timeSpent__c = 20;
+            i.BMCServiceDesk__FKStatus__c = statusId;
+        }
+        insert incList;
+        
+        for(BMCServiceDesk__Incident__c i: [Select BMCServiceDesk__timeSpent__c from BMCServiceDesk__Incident__c]){
+            System.assertEquals(i.BMCServiceDesk__timeSpent__c,null);
+        }
+        
+        List<BMCServiceDesk__IncidentHistory__c> historyList = new List<BMCServiceDesk__IncidentHistory__c>();
+        historyList = [Select id from BMCServiceDesk__IncidentHistory__c];
+        Integer historySize = historyList.size();
+        
+        System.assertEquals(historySize,batchSize);
+    }
+    
+    private static void enableTimeTracking(){
+        Map<String,String> customSettingsMap = new Map<String,String>();
+        
+        customSettingsMap.put('Enabled','true');
+        insertSettings(customSettingsMap);
+    }
+    
+    private static void disableTimeTracking(){
+        Map<String,String> customSettingsMap = new Map<String,String>();
+        
+        customSettingsMap.put('Enabled','false');
+        insertSettings(customSettingsMap);
+    }
+    
+    private static void insertSettings(Map<String,String> valueList){
+        
+        for(String s: valueList.keySet()){
+            Time_Spent__c setting = new Time_Spent__c();
+			setting.Name = s;
+			setting.Value__c = valueList.get(s);
+			insert setting;
+        }
+    }
+    
+    /*
+     * 
+     * 
+     *  
+	*/
+
+    private static void generateStatuses(){
+        List<BMCServiceDesk__Status__c> statusList = new List<BMCServiceDesk__Status__c>();
+        statusList.add(new BMCServiceDesk__Status__c(Name = 'CLOSED', BMCServiceDesk__state__c=false,BMCServiceDesk__appliesToIncident__c=true));
+		
+		insert statusList;
     }
     
     private static void generateCategoryData() {
