@@ -1,2 +1,2 @@
 # TimeSpent
-Reduce the amount of time necessary to track the amount of time spent when working on an Incident. 
+Reduce the amount of clicks and time necessary to track total working time on BMC Remedyforce Incidents. 
